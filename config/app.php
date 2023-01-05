@@ -68,7 +68,6 @@ return [
 
     'providers' => [
         App\Providers\AppServiceProvider::class,
-        \Worksome\Envy\EnvyServiceProvider::class
     ],
 
     'aliases' => [
