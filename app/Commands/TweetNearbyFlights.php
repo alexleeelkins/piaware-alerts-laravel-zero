@@ -8,10 +8,11 @@ use App\AircraftOperator;
 use App\AircraftType;
 use App\Service\AeroAPI;
 use App\Service\HexDB;
-use App\Service\PointInPolygon;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Arr;
 use LaravelZero\Framework\Commands\Command;
+use Location\Coordinate;
+use Location\Polygon;
 
 class TweetNearbyFlights extends Command
 {
@@ -64,7 +65,17 @@ class TweetNearbyFlights extends Command
 
                 if (config('config.SearchRadiusMechanism') === 'polygon') {
                     $polygon = explode(',', config('config.SearchRadiusPolygon'));
-                    if ((new PointInPolygon())->pointInPolygon(sprintf('%s %s', Arr::get($aircraft, 'lat'), Arr::get($aircraft, 'lon')), $polygon) === 'outside') {
+
+                    $geofence = new Polygon();
+
+                    foreach ($polygon as $latitudeAndLongitudeString) {
+                        $latitudeAndLongitudeStringSplit = explode(' ', $latitudeAndLongitudeString);
+                        $geofence->addPoint(new Coordinate($latitudeAndLongitudeStringSplit[0], $latitudeAndLongitudeStringSplit[1]));
+                    }
+
+                    $aircraftCoordinate = new Coordinate(Arr::get($aircraft, 'lat'), Arr::get($aircraft, 'lon'));
+
+                    if (!$geofence->contains($aircraftCoordinate)) {
                         $notInPolygonTotal++;
                         $notInPolygon++;
                         continue;
