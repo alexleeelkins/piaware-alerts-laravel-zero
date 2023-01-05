@@ -1,0 +1,38 @@
+{
+    "now": 1672893983.2,
+    "messages": 11284561,
+    "aircraft": [
+        {
+            "hex": "a8cfb3",
+            "flight": "SKQ28   ",
+            "alt_baro": 14950,
+            "alt_geom": 14750,
+            "gs": 232.6,
+            "track": 143.9,
+            "baro_rate": 768,
+            "squawk": "4014",
+            "emergency": "none",
+            "category": "A1",
+            "nav_qnh": 1013.6,
+            "nav_altitude_mcp": 20992,
+            "lat": 39.720604,
+            "lon": -82.731995,
+            "nic": 9,
+            "rc": 75,
+            "seen_pos": 0.4,
+            "version": 2,
+            "nic_baro": 1,
+            "nac_p": 10,
+            "nac_v": 2,
+            "sil": 3,
+            "sil_type": "perhour",
+            "gva": 2,
+            "sda": 2,
+            "mlat": [],
+            "tisb": [],
+            "messages": 2740,
+            "seen": 0.3,
+            "rssi": -11.9
+        }
+    ]
+}
