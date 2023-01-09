@@ -42,6 +42,7 @@ class TweetNearbyFlights extends Command
         $tooFarTotal           = 0;
         $sawRecentlyTotal      = 0;
         $noAeroApiFlightTotal  = 0;
+        $hexDBFailedTotal      = 0;
         $tweetedTotal          = 0;
 
         while (true) {
@@ -52,6 +53,7 @@ class TweetNearbyFlights extends Command
             $tooFar           = 0;
             $sawRecently      = 0;
             $noAeroApiFlight  = 0;
+            $hexDBFailed      = 0;
             $tweeted          = 0;
 
             foreach (Arr::get($aircraftJson, 'aircraft') ?? [] as $aircraft) {
@@ -88,6 +90,14 @@ class TweetNearbyFlights extends Command
                     }
                 } else {
                     $this->error('config.SearchRadiusMechanism is not configured properly');
+                }
+
+                try {
+                    $registrationCode = (new HexDB())->getRegistrationCode(Arr::get($aircraft, 'hex'));
+                } catch (\Exception $e) {
+                    $hexDBFailed++;
+                    $hexDBFailedTotal++;
+                    continue;
                 }
 
                 Arr::set($aircraft, 'registration', (new HexDB())->getRegistrationCode(Arr::get($aircraft, 'hex')));
@@ -209,10 +219,10 @@ class TweetNearbyFlights extends Command
 
             system('clear');
             $this->table(
-                headers: ['', 'No Coordinates', 'Outside Polygon', 'Outside Range', 'Checked Too Recently', 'No AeroAPI Details', 'Tweeted',],
+                headers: ['', 'No Coordinates', 'Outside Polygon', 'Outside Range', 'Checked Too Recently', 'No AeroAPI Details', 'HexDB Failure', 'Tweeted',],
                 rows   : [
-                             ['This Run', $noGpsCoordinates, $notInPolygon, $tooFar, $sawRecently, $noAeroApiFlight, $tweeted],
-                             ['Total', $noGpsCoordinatesTotal, $notInPolygonTotal, $tooFarTotal, $sawRecentlyTotal, $noAeroApiFlightTotal, $tweetedTotal],
+                             ['This Run', $noGpsCoordinates, $notInPolygon, $tooFar, $sawRecently, $noAeroApiFlight, $hexDBFailed, $tweeted],
+                             ['Total', $noGpsCoordinatesTotal, $notInPolygonTotal, $tooFarTotal, $sawRecentlyTotal, $noAeroApiFlightTotal, $hexDBFailedTotal, $tweetedTotal],
                          ]
             );
 
