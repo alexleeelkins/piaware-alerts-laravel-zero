@@ -9,7 +9,7 @@ class HexDB
 {
     protected const BASE_ENDPOINT = 'https://hexdb.io/api/v1';
 
-    public function getRegistrationCode(string $hex): ?string
+    public function getRegistrationCode(?string $hex): ?string
     {
         $response = Http::get(sprintf('%s/aircraft/%s', self::BASE_ENDPOINT, $hex));
 

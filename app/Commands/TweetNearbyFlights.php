@@ -10,6 +10,7 @@ use App\Service\AeroAPI;
 use App\Service\HexDB;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 use LaravelZero\Framework\Commands\Command;
 use Location\Coordinate;
 use Location\Polygon;
@@ -44,6 +45,7 @@ class TweetNearbyFlights extends Command
         $noAeroApiFlightTotal  = 0;
         $hexDBFailedTotal      = 0;
         $tweetedTotal          = 0;
+        $totalTotal            = 0;
 
         while (true) {
             $aircraftJson = json_decode(file_get_contents(config('config.AircraftJsonLocation')), true) ?? [];
@@ -55,8 +57,12 @@ class TweetNearbyFlights extends Command
             $noAeroApiFlight  = 0;
             $hexDBFailed      = 0;
             $tweeted          = 0;
+            $total            = 0;
 
             foreach (Arr::get($aircraftJson, 'aircraft') ?? [] as $aircraft) {
+                $total++;
+                $totalTotal++;
+
                 if (Arr::get($aircraft, 'lat') === null) {
                     $noGpsCoordinatesTotal++;
                     $noGpsCoordinates++;
@@ -92,15 +98,21 @@ class TweetNearbyFlights extends Command
                     $this->error('config.SearchRadiusMechanism is not configured properly');
                 }
 
+                if (Arr::get($aircraft, 'hex') === null) {
+                    continue;
+                }
+
                 try {
                     $registrationCode = (new HexDB())->getRegistrationCode(Arr::get($aircraft, 'hex'));
                 } catch (\Exception $e) {
+                    Log::error($e);
+
                     $hexDBFailed++;
                     $hexDBFailedTotal++;
                     continue;
                 }
 
-                Arr::set($aircraft, 'registration', (new HexDB())->getRegistrationCode(Arr::get($aircraft, 'hex')));
+                Arr::set($aircraft, 'registration', $registrationCode);
                 Arr::set($aircraft, 'latitude', Arr::get($aircraft, 'lat'));
                 Arr::set($aircraft, 'longitude', Arr::get($aircraft, 'lon'));
                 Arr::set($aircraft, 'knots', Arr::get($aircraft, 'gs'));
@@ -126,7 +138,16 @@ class TweetNearbyFlights extends Command
 
                 $aeroApi = new AeroAPI(config('config.AeroAPIToken'));
 
-                $aeroApiFlight = $aeroApi->getFlight($dbAircraft->flight);
+                if ($dbAircraft->flight === null) {
+                    continue;
+                }
+
+                try {
+                    $aeroApiFlight = $aeroApi->getFlight($dbAircraft->flight);
+                } catch (\Exception $e) {
+                    Log::error($e);
+                    continue;
+                }
 
                 if ($aeroApiFlight === null) {
                     $noAeroApiFlightTotal++;
@@ -217,14 +238,38 @@ class TweetNearbyFlights extends Command
                 $tweeted++;
             }
 
-            system('clear');
-            $this->table(
-                headers: ['', 'No Coordinates', 'Outside Polygon', 'Outside Range', 'Checked Too Recently', 'No AeroAPI Details', 'HexDB Failure', 'Tweeted',],
-                rows   : [
-                             ['This Run', $noGpsCoordinates, $notInPolygon, $tooFar, $sawRecently, $noAeroApiFlight, $hexDBFailed, $tweeted],
-                             ['Total', $noGpsCoordinatesTotal, $notInPolygonTotal, $tooFarTotal, $sawRecentlyTotal, $noAeroApiFlightTotal, $hexDBFailedTotal, $tweetedTotal],
-                         ]
-            );
+            $numberFormatter = new \NumberFormatter('en_US', \NumberFormatter::PERCENT);
+
+            if ($total > 0) {
+                system('clear');
+                $this->table(
+                    headers: ['', 'Total', 'Coordinates', 'Polygon', 'Range', 'Too Recent', 'No AeroAPI', 'HexDB Fail', 'Tweeted',],
+                    rows   : [
+                                 [
+                                     'Just Now',
+                                     $total,
+                                     $numberFormatter->format($noGpsCoordinates / $total),
+                                     $numberFormatter->format($notInPolygon / $total),
+                                     $numberFormatter->format($tooFar / $total),
+                                     $numberFormatter->format($sawRecently / $total),
+                                     $numberFormatter->format($noAeroApiFlight / $total),
+                                     $numberFormatter->format($hexDBFailed / $total),
+                                     $numberFormatter->format($tweeted / $total),
+                                 ],
+                                 [
+                                     'Total',
+                                     $totalTotal,
+                                     $numberFormatter->format($noGpsCoordinatesTotal / $totalTotal),
+                                     $numberFormatter->format($notInPolygonTotal / $totalTotal),
+                                     $numberFormatter->format($tooFarTotal / $totalTotal),
+                                     $numberFormatter->format($sawRecentlyTotal / $totalTotal),
+                                     $numberFormatter->format($noAeroApiFlightTotal / $totalTotal),
+                                     $numberFormatter->format($hexDBFailedTotal / $totalTotal),
+                                     $numberFormatter->format($tweetedTotal / $totalTotal),
+                                 ],
+                             ]
+                );
+            }
 
             sleep(config('config.PollEverySeconds'));
         }
